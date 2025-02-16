@@ -49,7 +49,6 @@ export function applyCssRule(selector: string, sourceClass: string) {
   }
   const sourceSelector = '.' + sourceClass;
   const match = rules[sourceSelector];
-  console.log(match);
   if (!match) {
     throw new Error(`Failed to find css selector ${sourceSelector}`);
   }
@@ -73,7 +72,6 @@ let currentSheet = {
 const sheets: (typeof currentSheet)[] = [];
 
 export function applyRawCssRule(rule: string) {
-  console.log(rule);
   if (currentSheet.id !== features.current) {
     queueSheetAppend();
     currentSheet = {

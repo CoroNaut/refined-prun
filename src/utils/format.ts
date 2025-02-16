@@ -109,13 +109,26 @@ export function formatCurrency(currency?: number | null, format?: (value: number
     : sign + symbol + format(Math.abs(currency));
 }
 
-export function formatNumber(value?: number | null, maxLength: number = 6): string {
+export function formatCost(cost?: number | null, maxLength: number = 7) {
+  if (!isPresent(cost) || !isPresent(maxLength)) {
+    return '--';
+  }
+  let formatted = Number.parseFloat(cost.toString()).toFixed(2);
+  if (formatted.length > maxLength - 3 && formatted.split('.')[1].length == 3) {
+    formatted = cost.toFixed(1);
+  } else if (formatted.length > maxLength - 3 && formatted.split('.')[1].length == 2) {
+    formatted = cost.toFixed(0);
+  }
+  return formatted;
+}
+
+export function formatNumber(value?: number | null, maxLength: number = 7): string {
   if (!isPresent(value) || !isPresent(maxLength)) {
     return '--';
   }
-  let formatted = value.toLocaleString();
+  let formatted = Math.trunc(value).toLocaleString();
   if (formatted.length > maxLength) {
-    formatted = (value / 1_000_000).toFixed(2) + 'M';
+    formatted = (value / 1_000_000).toFixed(3) + 'M';
   }
   return formatted;
 }

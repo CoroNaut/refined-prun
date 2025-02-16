@@ -29,7 +29,6 @@
     "math-expression-evaluator": "^2.0.5",
     "one-mutation": "^3.0.1",
     "onetime": "^7.0.0",
-    "rxjs": "^7.8.1",
     "socket.io-parser": "^4.2.4",
     "tinycolor2": "^1.6.0",
     "ts-extras": "^0.13.0",
