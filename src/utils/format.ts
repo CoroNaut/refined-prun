@@ -109,6 +109,17 @@ export function formatCurrency(currency?: number | null, format?: (value: number
     : sign + symbol + format(Math.abs(currency));
 }
 
+export function formatNumber(value?: number | null, maxLength: number = 6): string {
+  if (!isPresent(value) || !isPresent(maxLength)) {
+    return '--';
+  }
+  let formatted = value.toLocaleString();
+  if (formatted.length > maxLength) {
+    formatted = (value / 1_000_000).toFixed(2) + 'M';
+  }
+  return formatted;
+}
+
 function getCurrencySymbol(settings: typeof userData.settings.currency) {
   switch (settings.preset) {
     case 'DEFAULT':
