@@ -3,6 +3,7 @@
 ### Added
 
 - `prod-hide-percent`: New feature. Hides percent value from production lines.
+- `mat-market-tooltip`: New feature. Hover over any material to quickly see market info
 
 ### Fixed
 
