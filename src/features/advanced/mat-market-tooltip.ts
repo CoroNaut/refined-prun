@@ -1,7 +1,15 @@
-import { formatCost, formatNumber } from '@src/utils/format';
+import { formatCurrency } from '@src/utils/format';
 import { cxobStore } from '@src/infrastructure/prun-api/data/cxob';
 import classes from './mat-market-tooltip.module.css';
 import { applyCssRule } from '@src/infrastructure/prun-ui/refined-prun-css';
+import tooltipVueTemplate from './mat-market-tooltip.vue';
+import { reactive } from 'vue';
+
+export const store = reactive({
+  showTooltip: false,
+  materialID: '',
+  marketData: {},
+});
 
 function init() {
   // Watch for new elements and class changes so we can give them the event listener to summon tooltip
@@ -43,6 +51,8 @@ function init() {
     tooltip.classList.add('mat_market_tooltip');
     applyCssRule('.mat_market_tooltip', classes.mat_market_tooltip);
     container.parentElement.appendChild(tooltip);
+
+    createFragmentApp(tooltipVueTemplate).appendTo(tooltip as Node);
   }
 }
 
@@ -69,7 +79,7 @@ function applyMarketTooltip(container: Element) {
       container.addEventListener('mouseover', () => {
         //calcTooltipLocation depends on getMarketDataTooltop to position itself correctly because it needs the tooltip's height
         tooltipDiv.style.display = 'inline-block';
-        tooltipDiv.innerHTML = getMarketDataTooltip(container, material);
+        store.showTooltip = getMarketDataTooltip(container, material);
         calcTooltipLocation(container, tooltipDiv, document.body);
       });
     }
@@ -87,38 +97,42 @@ function applyMarketTooltip(container: Element) {
   }
 }
 
-function getMarketDataTooltip(container, material: string): string {
+function getMarketDataTooltip(container, material: string): boolean {
   //shipment doesn't need market details
   if (material == 'SHPT') {
     return container.getAttribute('mat_market_tooltip_data') || '';
   }
+  store.materialID = material;
+  let hasData = false;
   //use cxobStore to get market data
-  const materialOrdersArray = [[material, 'Ask', 'Amt', 'Bid', 'Amt', 'Supply', 'Demand']];
   for (const exchange of ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2']) {
-    const store = cxobStore.getByTicker(material + '.' + exchange);
-    if (store) {
-      materialOrdersArray.push([
-        exchange,
-        formatCost(store.ask?.price.amount || null),
-        formatNumber(store.ask?.amount ?? null),
-        formatCost(store.bid?.price.amount || null),
-        formatNumber(store.bid?.amount ?? null),
-        formatNumber(store.supply),
-        formatNumber(store.demand),
-      ]);
+    const ticker = material + '.' + exchange;
+    const cxobStoreInfo = cxobStore.getByTicker(ticker);
+    if (cxobStoreInfo) {
+      hasData = true;
+      store.marketData[exchange] = [
+        formatCurrency(cxobStoreInfo.ask?.price.amount || null),
+        (cxobStoreInfo.ask?.amount ?? 0).toLocaleString(),
+        formatCurrency(cxobStoreInfo.bid?.price.amount || null),
+        (cxobStoreInfo.bid?.amount ?? 0).toLocaleString(),
+        cxobStoreInfo.supply.toLocaleString(),
+        cxobStoreInfo.demand.toLocaleString(),
+      ];
+    } else {
+      store['marketData'][exchange] = null;
+      //TODO if the store doesn't have the data, fetch from FIO
+      //getFIOAPIData(ticker)
     }
   }
+  return hasData;
+}
 
-  //apply market data to the tooltip and return string
-  let resultTable = '';
-  if (materialOrdersArray.length == 1) {
-    return 'Open CX to fetch prices';
-  } else {
-    materialOrdersArray.forEach(row => {
-      resultTable += row.map(cell => `${cell.toString().padEnd(7)}`).join(' ') + '\n';
+function getFIOAPIData(materialTicker): Promise<object> {
+  return fetch('https://rest.fnar.net/exchange/' + materialTicker)
+    .then(res => res.json())
+    .then(res => {
+      return res as object;
     });
-    return resultTable;
-  }
 }
 
 function calcTooltipLocation(container, tooltipDiv, documentBody) {
