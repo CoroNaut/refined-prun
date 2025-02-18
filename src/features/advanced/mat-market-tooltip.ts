@@ -1,17 +1,44 @@
-import { formatCurrency } from '@src/utils/format';
-import { cxobStore } from '@src/infrastructure/prun-api/data/cxob';
 import classes from './mat-market-tooltip.module.css';
 import { applyCssRule } from '@src/infrastructure/prun-ui/refined-prun-css';
 import tooltipVueTemplate from './mat-market-tooltip.vue';
 import { reactive } from 'vue';
+import { NONAME } from 'dns';
 
 export const store = reactive({
-  showTooltip: false,
+  exchanges: ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2'],
+  selectedExchange: 'AI1',
   materialID: '',
-  marketData: {},
+  shipmentID: '',
+  tooltipElement: {} as HTMLElement,
+  showTooltip() {
+    if (Object.keys(this.tooltipElement).length) {
+      this.getTooltipElement();
+    }
+    if (this.tooltipElement) {
+      (this.tooltipElement as HTMLElement).style.display = 'block';
+    }
+  },
+  hideTooltip() {
+    if (Object.keys(this.tooltipElement).length) {
+      this.getTooltipElement();
+    }
+    if (this.tooltipElement) {
+      (this.tooltipElement as HTMLElement).style.display = 'none';
+    }
+  },
+  getTooltipElement() {
+    const element = document.getElementById('mat_market_tooltip');
+    if (element) {
+      this.tooltipElement = element as HTMLElement;
+    }
+  },
 });
 
 function init() {
+  applyCssRule(
+    `.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`,
+    classes.noPointerEvents,
+  );
   // Watch for new elements and class changes so we can give them the event listener to summon tooltip
   const observer = new MutationObserver(mutations => {
     mutations.forEach(mutation => {
@@ -46,13 +73,9 @@ function init() {
   // Make a div that we can use as our tooltip
   const container = document.getElementById('container');
   if (container?.parentElement) {
-    const tooltip = document.createElement('div');
-    tooltip.id = 'mat_market_tooltip_ID';
-    tooltip.classList.add('mat_market_tooltip');
-    applyCssRule('.mat_market_tooltip', classes.mat_market_tooltip);
-    container.parentElement.appendChild(tooltip);
-
-    createFragmentApp(tooltipVueTemplate).appendTo(tooltip as Node);
+    createFragmentApp(tooltipVueTemplate).appendTo(container as Node);
+    store.getTooltipElement();
+    console.log(store.tooltipElement);
   }
 }
 
@@ -60,34 +83,37 @@ function applyMarketTooltip(container: Element) {
   const containerClassList = Array.from(container.classList);
   const rpTickerMaterial = containerClassList.find(cls => cls.startsWith('rp-ticker-'));
   //get our tooltip div to be able to set its market data
-  const tooltipDiv = document.getElementById('mat_market_tooltip_ID');
+  const tooltipDiv = store.tooltipElement;
 
   if (rpTickerMaterial && tooltipDiv) {
     const material = rpTickerMaterial.split('-')[2];
     //shipment doesn't need market details
     if (container.hasAttribute('title') && material == 'SHPT') {
       container.setAttribute(
-        'mat_market_tooltip_data',
+        'mmt_shpt_info',
         container.getAttribute('title') || "Error, 'title' not found",
       );
       container.removeAttribute('title');
     }
 
-    //move tooltip to the container with a mouseover event
-    if (!container.hasAttribute('mouseover')) {
-      container.setAttribute('mouseover', '');
-      container.addEventListener('mouseover', () => {
+    //move tooltip to the container with a mouseenter event
+    if (!container.hasAttribute('mouseenter')) {
+      container.setAttribute('mouseenter', '');
+      container.addEventListener('mouseenter', async () => {
         //calcTooltipLocation depends on getMarketDataTooltop to position itself correctly because it needs the tooltip's height
-        tooltipDiv.style.display = 'inline-block';
-        store.showTooltip = getMarketDataTooltip(container, material);
+        store.showTooltip();
+        setTooltipMaterial(container, material);
+        await nextTick();
         calcTooltipLocation(container, tooltipDiv, document.body);
       });
     }
-    //just hide the tooltip on mouseout
-    if (!container.hasAttribute('mouseout')) {
-      container.setAttribute('mouseout', '');
-      container.addEventListener('mouseout', () => {
-        tooltipDiv.style.display = 'none';
+    //just hide the tooltip on mouseleave
+    if (!container.hasAttribute('mouseleave')) {
+      container.setAttribute('mouseleave', '');
+      container.addEventListener('mouseleave', () => {
+        if (!tooltipDiv.matches(':hover')) {
+          store.hideTooltip();
+        }
       });
     }
     //remove title just so the default browser tooltip doesn't show
@@ -96,56 +122,30 @@ function applyMarketTooltip(container: Element) {
     }
   }
 }
-
-function getMarketDataTooltip(container, material: string): boolean {
+//🛈🗠🕮⇄
+function setTooltipMaterial(container, material: string): void {
   //shipment doesn't need market details
   if (material == 'SHPT') {
-    return container.getAttribute('mat_market_tooltip_data') || '';
+    store.shipmentID = container.getAttribute('mmt_shpt_info') || '';
+    store.materialID = '';
+    return;
   }
   store.materialID = material;
-  let hasData = false;
-  //use cxobStore to get market data
-  for (const exchange of ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2']) {
-    const ticker = material + '.' + exchange;
-    const cxobStoreInfo = cxobStore.getByTicker(ticker);
-    if (cxobStoreInfo) {
-      hasData = true;
-      store.marketData[exchange] = [
-        formatCurrency(cxobStoreInfo.ask?.price.amount || null),
-        (cxobStoreInfo.ask?.amount ?? 0).toLocaleString(),
-        formatCurrency(cxobStoreInfo.bid?.price.amount || null),
-        (cxobStoreInfo.bid?.amount ?? 0).toLocaleString(),
-        cxobStoreInfo.supply.toLocaleString(),
-        cxobStoreInfo.demand.toLocaleString(),
-      ];
-    } else {
-      store['marketData'][exchange] = null;
-      //TODO if the store doesn't have the data, fetch from FIO
-      //getFIOAPIData(ticker)
-    }
-  }
-  return hasData;
-}
-
-function getFIOAPIData(materialTicker): Promise<object> {
-  return fetch('https://rest.fnar.net/exchange/' + materialTicker)
-    .then(res => res.json())
-    .then(res => {
-      return res as object;
-    });
+  store.shipmentID = '';
 }
 
 function calcTooltipLocation(container, tooltipDiv, documentBody) {
   const containerRect = container.getBoundingClientRect();
   const tooltipRect = tooltipDiv.getBoundingClientRect();
   const documentRect = documentBody.getBoundingClientRect();
+  const fivePercentContainer = containerRect.width * 0.05 > 2 ? containerRect.width * 0.05 : 2;
 
   //basic right-hand edge detection only
   let left = '';
-  if (tooltipRect.width + containerRect.right + 10 > documentRect.right) {
-    left = (containerRect.left - tooltipRect.width - 10).toString() + 'px';
+  if (tooltipRect.width + containerRect.right - fivePercentContainer > documentRect.right) {
+    left = (containerRect.left - tooltipRect.width + fivePercentContainer).toString() + 'px';
   } else {
-    left = (containerRect.right + 10).toString() + 'px';
+    left = (containerRect.right - fivePercentContainer).toString() + 'px';
   }
   const containerMidHeight = (containerRect.top + containerRect.bottom) / 2;
   const top = (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
@@ -154,4 +154,8 @@ function calcTooltipLocation(container, tooltipDiv, documentBody) {
   tooltipDiv.style.top = top;
 }
 
-features.add(import.meta.url, init, 'Mat: Hover over any material to quickly see market info.');
+features.add(
+  import.meta.url,
+  init,
+  'Mat: Hover over any material to quickly see material market buttons.',
+);
