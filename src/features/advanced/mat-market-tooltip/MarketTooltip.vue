@@ -119,6 +119,7 @@ import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
 .fillwidth {
   width: 100%;
 }
+
 .slimdropdown {
   padding-left: 0px;
   padding-right: 0px;
@@ -127,9 +128,11 @@ import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
   margin-top: -1px;
   border-radius: 3px;
 }
+
 .tableRemoveBorder > tbody {
   border-bottom: none;
 }
+
 .mat_market_tooltip {
   align-items: center;
   background: rgb(38, 38, 38);
@@ -141,6 +144,7 @@ import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
   position: absolute;
   z-index: 99998;
 }
+
 .invisible_overlay {
   position: absolute;
   top: 0;
