@@ -4,20 +4,27 @@ import MarketTooltip from './MarketTooltip.vue';
 import { reactive } from 'vue';
 import { refTextContent } from '@src/utils/reactive-dom';
 import { watchEffectWhileNodeAlive } from '@src/utils/watch';
+import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
 
 export const store = reactive({
-  exchanges: ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2'],
   selectedExchange: 'AI1',
   materialID: '',
   shipmentID: '',
   tooltipElement: undefined as HTMLElement | undefined,
   showTooltip() {
-    this.getTooltipElement();
-    (this.tooltipElement as HTMLElement).style.display = 'block';
+    this.tooltipElement!.style.display = 'block';
   },
   hideTooltip() {
-    this.getTooltipElement();
-    (this.tooltipElement as HTMLElement).style.display = 'none';
+    this.tooltipElement!.style.display = 'none';
+  },
+  showBuffer(cmd: string) {
+    this.hideTooltip(); //devs wanted it to be manual for every new buffer opened
+    if (cmd === 'CXM') {
+      return showBuffer(`CXM ${this.materialID}`);
+    } else if (['CXP', 'CXPC', 'CXPO', 'CXOB'].includes(cmd)) {
+      return showBuffer(`${cmd} ${this.materialID}.${this.selectedExchange}`);
+    }
+    return;
   },
   getTooltipElement() {
     if (this.tooltipElement) {
@@ -31,10 +38,7 @@ export const store = reactive({
 });
 
 function init() {
-  applyCssRule(
-    `.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`,
-    classes.noPointerEvents,
-  );
+  applyCssRule(`.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`, classes.coloredIcon);
 
   subscribe($$(document, C.ColoredIcon.label), label => {
     const container = label.closest(`.${C.ColoredIcon.container}`) as HTMLElement;
@@ -51,7 +55,6 @@ function init() {
     });
   });
 
-  // Make a div that we can use as our tooltip
   const container = document.getElementById('container');
   if (container?.parentElement) {
     createFragmentApp(MarketTooltip).appendTo(container as Node);
@@ -67,6 +70,7 @@ function applyMarketTooltip(container: Element, ticker: string) {
 
   /*
   //shipment doesn't need market details
+  //TDOD needed?
   if (container.hasAttribute('title') && ticker == 'SHPT') {
     container.setAttribute(
       'mmtSHPT',
@@ -76,10 +80,9 @@ function applyMarketTooltip(container: Element, ticker: string) {
   }
   */
 
-  //move tooltip to the container with a mouseenter event
   container.addEventListener('mouseenter', async () => {
     store.showTooltip();
-    setTooltipMaterial(container, ticker);
+    setTooltipMaterial(container, ticker); //TODO needed?
     await nextTick();
     calcTooltipLocation(container, tooltipDiv, document.body);
   });
@@ -89,7 +92,7 @@ function applyMarketTooltip(container: Element, ticker: string) {
       store.hideTooltip();
     }
   });
-  //remove title just so the default browser tooltip doesn't show
+
   if (container.hasAttribute('title')) {
     container.removeAttribute('title');
   }
@@ -108,24 +111,19 @@ function setTooltipMaterial(container, material: string): void {
 
 function calcTooltipLocation(container, tooltipDiv, documentBody) {
   const containerRect = container.getBoundingClientRect();
-  //calculate how many pixels into the coloredIcon container is 5% in to ensure the tooltip overlaps on it a little
-  //If there is no overlap, sometimes there is a decimal pixel gap between the container and tooltip
-  const fivePercentContainer = containerRect.width * 0.05 > 2 ? containerRect.width * 0.05 : 2;
 
   //basic right-hand edge detection only
   const tooltipRect = tooltipDiv.getBoundingClientRect();
-  const documentRect = documentBody.getBoundingClientRect();
-  let left = '';
-  if (tooltipRect.width + containerRect.right - fivePercentContainer > documentRect.right) {
-    left = (containerRect.left - tooltipRect.width + fivePercentContainer).toString() + 'px';
-  } else {
-    left = (containerRect.right - fivePercentContainer).toString() + 'px';
-  }
-  const containerMidHeight = (containerRect.top + containerRect.bottom) / 2;
-  const top = (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
 
-  tooltipDiv.style.left = left;
-  tooltipDiv.style.top = top;
+  const containerMidHeight = (containerRect.top + containerRect.bottom) / 2;
+  tooltipDiv.style.top = (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
+
+  const documentRect = documentBody.getBoundingClientRect();
+  if (tooltipRect.width + containerRect.right > documentRect.right) {
+    tooltipDiv.style.left = (containerRect.left - tooltipRect.width).toString() + 'px';
+  } else {
+    tooltipDiv.style.left = containerRect.right.toString() + 'px';
+  }
 }
 
 features.add(
