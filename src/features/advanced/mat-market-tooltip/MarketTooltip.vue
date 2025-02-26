@@ -4,12 +4,22 @@ import PrunButton from '@src/components/PrunButton.vue';
 import SelectInput from '@src/components/forms/SelectInput.vue';
 
 const exchanges = ['AI1', 'CI1', 'IC1', 'NC1', 'CI2', 'NC2'];
+const buttons = [
+  ['Info', 'CXP'],
+  ['Chart', 'CXPC'],
+  ['Orders', 'CXOB'],
+  ['Trade', 'CXPO'],
+  ['CXM', 'CXM'],
+];
 </script>
 
 <template>
-  <div id="mat_market_tooltip" :class="$style.tooltip" @mouseleave="store.hideTooltip">
-    <div v-if="store.shipmentID.length">{{ store.shipmentID }}</div>
-    <div v-if="!store.shipmentID.length && store.materialID.length">
+  <div
+    id="mat_market_tooltip"
+    :class="$style.tooltip"
+    :style="{ display: 'none' }"
+    @mouseleave="store.hideTooltip">
+    <div v-if="store.materialID">
       <div>
         <SelectInput
           :options="exchanges"
@@ -19,39 +29,12 @@ const exchanges = ['AI1', 'CI1', 'IC1', 'NC1', 'CI2', 'NC2'];
       </div>
       <div>
         <PrunButton
+          v-for="cmd in buttons"
           :dark="true"
           :inline="true"
           :class="$style.prunButton"
-          @click="store.showBuffer('CXP')">
-          Info
-        </PrunButton>
-        <PrunButton
-          :dark="true"
-          :inline="true"
-          :class="$style.prunButton"
-          @click="store.showBuffer('CXPC')">
-          Chart
-        </PrunButton>
-        <PrunButton
-          :dark="true"
-          :inline="true"
-          :class="$style.prunButton"
-          @click="store.showBuffer('CXOB')">
-          Orders
-        </PrunButton>
-        <PrunButton
-          :dark="true"
-          :inline="true"
-          :class="$style.prunButton"
-          @click="store.showBuffer('CXPO')">
-          Trade
-        </PrunButton>
-        <PrunButton
-          :dark="true"
-          :inline="true"
-          :class="$style.prunButton"
-          @click="store.showBuffer('CXM')">
-          CXM
+          @click="store.showBuffer(cmd[1])">
+          {{ cmd[0] }}
         </PrunButton>
       </div>
     </div>
