@@ -1,22 +1,26 @@
 import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
-import { applyScopedCssRule } from '@src/infrastructure/prun-ui/refined-prun-css';
 import { refTextContent } from '@src/utils/reactive-dom';
 import { watchEffectWhileNodeAlive } from '@src/utils/watch';
-import { reactive } from 'vue';
+import { ComponentPublicInstance, reactive } from 'vue';
 import MarketTooltip from './MarketTooltip.vue';
-import classes from './mat-market-tooltip.module.css';
 
 export const store = reactive({
   selectedExchange: 'AI1',
   materialID: '',
-  tooltipElement: undefined as HTMLElement | undefined,
-  showTooltip(container: HTMLElement, ticker: string) {
+  tooltipElement: {} as HTMLElement,
+  tooltipStyle: {
+    display: 'none',
+    left: '0px',
+    top: '0px',
+  },
+  async showTooltip(container: HTMLElement, ticker: string) {
     this.materialID = ticker;
-    this.tooltipElement!.style.display = 'block';
+    this.tooltipStyle.display = 'block';
+    await nextTick();
     store.setLocationToContainer(container);
   },
   hideTooltip() {
-    this.tooltipElement!.style.display = 'none';
+    this.tooltipStyle.display = 'none';
   },
   showBuffer(cmd: string) {
     this.hideTooltip();
@@ -27,29 +31,21 @@ export const store = reactive({
     }
     return;
   },
-  getTooltipElement() {
-    if (!this.tooltipElement) {
-      const element = document.getElementById('mat_market_tooltip');
-      if (element) {
-        this.tooltipElement = element as HTMLElement;
-      }
-    }
+  setTooltipElement(componentInstance: ComponentPublicInstance) {
+    this.tooltipElement = (componentInstance as any).$el as HTMLElement;
   },
   setLocationToContainer(container: HTMLElement) {
     const containerRect = container.getBoundingClientRect();
-
-    const tooltipRect = this.tooltipElement!.getBoundingClientRect();
-
+    const tooltipRect = this.tooltipElement.getBoundingClientRect();
     const containerMidHeight = (containerRect.top + containerRect.bottom) / 2;
-    this.tooltipElement!.style.top =
-      (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
+    this.tooltipStyle.top = (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
 
     //basic right-hand edge detection only
-    const documentRect = this.tooltipElement?.parentElement!.getBoundingClientRect();
+    const documentRect = this.tooltipElement.parentElement!.getBoundingClientRect();
     if (tooltipRect.width + containerRect.right > documentRect!.right) {
-      this.tooltipElement!.style.left = (containerRect.left - tooltipRect.width).toString() + 'px';
+      this.tooltipStyle.left = (containerRect.left - tooltipRect.width).toString() + 'px';
     } else {
-      this.tooltipElement!.style.left = containerRect.right.toString() + 'px';
+      this.tooltipStyle.left = containerRect.right.toString() + 'px';
     }
   },
 });
@@ -62,58 +58,59 @@ function onTileReady(tile: PrunTile) {
       return;
     }
     watchEffectWhileNodeAlive(label, () => {
-      container.addEventListener('mouseenter', async () => {
+      const showTooltip = () => {
         store.showTooltip(container, ticker.value!);
-      });
-
-      container.addEventListener('mouseleave', () => {
+      };
+      const hideTooltip = () => {
         if (!store.tooltipElement!.matches(':hover')) {
           store.hideTooltip();
         }
-      });
+      };
+      container.addEventListener('mouseenter', showTooltip);
+      container.addEventListener('mouseleave', hideTooltip);
 
       if (container.hasAttribute('title')) {
         container.removeAttribute('title');
       }
+
+      return () => {
+        container.removeEventListener('mouseenter', showTooltip);
+        container.removeEventListener('mouseleave', hideTooltip);
+      };
     });
   });
 }
 
-function init() {
-  const commands = [
-    'BBC',
-    'BBL',
-    'BLU',
-    'BRA',
-    'BS',
-    'BUI',
-    'CONT',
-    'CX',
-    'HQ',
-    'INV',
-    'MAT',
-    'PLI',
-    'PROD',
-    'PRODQ',
-    'SHPF',
-    'SHPI',
-    'SYSI',
-    'WAR',
-    'WF',
-  ];
-  applyScopedCssRule(
-    commands,
-    `.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`,
-    classes.coloredIcon,
-  );
-
+async function init() {
   const container = document.getElementById('container');
   if (container?.parentElement) {
-    createFragmentApp(MarketTooltip).appendTo(container as Node);
-    store.getTooltipElement();
+    store.setTooltipElement(createFragmentApp(MarketTooltip).appendTo(container));
   }
 
-  tiles.observe(commands, onTileReady);
+  tiles.observe(
+    [
+      'BBC',
+      'BBL',
+      'BLU',
+      'BRA',
+      'BS',
+      'BUI',
+      'CONT',
+      'CX',
+      'HQ',
+      'INV',
+      'MAT',
+      'PLI',
+      'PROD',
+      'PRODQ',
+      'SHPF',
+      'SHPI',
+      'SYSI',
+      'WAR',
+      'WF',
+    ],
+    onTileReady,
+  );
 }
 
 features.add(

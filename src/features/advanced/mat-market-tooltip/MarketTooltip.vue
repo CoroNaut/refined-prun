@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { store } from './mat-market-tooltip';
 import PrunButton from '@src/components/PrunButton.vue';
 import SelectInput from '@src/components/forms/SelectInput.vue';
+import { store } from './mat-market-tooltip';
 
-const exchanges = ['AI1', 'CI1', 'IC1', 'NC1', 'CI2', 'NC2'];
-const buttons = [
+const exchanges: string[] = ['AI1', 'CI1', 'IC1', 'NC1', 'CI2', 'NC2'];
+const buttons: [string, string][] = [
   ['Info', 'CXP'],
   ['Chart', 'CXPC'],
   ['Orders', 'CXOB'],
@@ -17,7 +17,7 @@ const buttons = [
   <div
     id="mat_market_tooltip"
     :class="$style.tooltip"
-    :style="{ display: 'none' }"
+    :style="store.tooltipStyle"
     @mouseleave="store.hideTooltip">
     <div v-if="store.materialID">
       <div>
@@ -30,6 +30,7 @@ const buttons = [
       <div>
         <PrunButton
           v-for="cmd in buttons"
+          :key="cmd[1]"
           :dark="true"
           :inline="true"
           :class="$style.prunButton"
@@ -40,6 +41,7 @@ const buttons = [
     </div>
   </div>
 </template>
+
 <style module>
 .prunButton {
   display: block;
