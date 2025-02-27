@@ -1,10 +1,10 @@
-import classes from './mat-market-tooltip.module.css';
-import { applyCssRule } from '@src/infrastructure/prun-ui/refined-prun-css';
-import MarketTooltip from './MarketTooltip.vue';
-import { reactive } from 'vue';
+import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
+import { applyScopedCssRule } from '@src/infrastructure/prun-ui/refined-prun-css';
 import { refTextContent } from '@src/utils/reactive-dom';
 import { watchEffectWhileNodeAlive } from '@src/utils/watch';
-import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
+import { reactive } from 'vue';
+import MarketTooltip from './MarketTooltip.vue';
+import classes from './mat-market-tooltip.module.css';
 
 export const store = reactive({
   selectedExchange: 'AI1',
@@ -38,13 +38,13 @@ export const store = reactive({
   setLocationToContainer(container: HTMLElement) {
     const containerRect = container.getBoundingClientRect();
 
-    //basic right-hand edge detection only
     const tooltipRect = this.tooltipElement!.getBoundingClientRect();
 
     const containerMidHeight = (containerRect.top + containerRect.bottom) / 2;
     this.tooltipElement!.style.top =
       (containerMidHeight - tooltipRect.height / 2).toString() + 'px';
 
+    //basic right-hand edge detection only
     const documentRect = this.tooltipElement?.parentElement!.getBoundingClientRect();
     if (tooltipRect.width + containerRect.right > documentRect!.right) {
       this.tooltipElement!.style.left = (containerRect.left - tooltipRect.width).toString() + 'px';
@@ -54,10 +54,8 @@ export const store = reactive({
   },
 });
 
-function init() {
-  applyCssRule(`.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`, classes.coloredIcon);
-
-  subscribe($$(document, C.ColoredIcon.label), label => {
+function onTileReady(tile: PrunTile) {
+  subscribe($$(tile.anchor, C.ColoredIcon.label), label => {
     const container = label.closest(`.${C.ColoredIcon.container}`) as HTMLElement;
     const ticker = refTextContent(label);
     if (!container || !ticker.value || ticker.value === 'SHPT') {
@@ -79,12 +77,43 @@ function init() {
       }
     });
   });
+}
+
+function init() {
+  const commands = [
+    'BBC',
+    'BBL',
+    'BLU',
+    'BRA',
+    'BS',
+    'BUI',
+    'CONT',
+    'CX',
+    'HQ',
+    'INV',
+    'MAT',
+    'PLI',
+    'PROD',
+    'PRODQ',
+    'SHPF',
+    'SHPI',
+    'SYSI',
+    'WAR',
+    'WF',
+  ];
+  applyScopedCssRule(
+    commands,
+    `.${C.ColoredIcon.labelContainer} > .${C.ColoredIcon.label}`,
+    classes.coloredIcon,
+  );
 
   const container = document.getElementById('container');
   if (container?.parentElement) {
     createFragmentApp(MarketTooltip).appendTo(container as Node);
     store.getTooltipElement();
   }
+
+  tiles.observe(commands, onTileReady);
 }
 
 features.add(
