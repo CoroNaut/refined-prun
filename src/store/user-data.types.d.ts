@@ -95,10 +95,11 @@ declare namespace UserData {
     planet?: string;
     days?: number;
     buildingAge?: number;
+    buildings?: [string, number][];
     subtasks?: Task[];
   }
 
-  export type TaskType = 'Text' | 'Resupply' | 'Repair';
+  export type TaskType = 'Text' | 'Resupply' | 'Repair' | 'Building';
 
   export interface CommandList {
     id: string;

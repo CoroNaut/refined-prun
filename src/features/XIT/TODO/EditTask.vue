@@ -1,22 +1,22 @@
 <script setup lang="ts">
+import PrunButton from '@src/components/PrunButton.vue';
 import SectionHeader from '@src/components/SectionHeader.vue';
 import Active from '@src/components/forms/Active.vue';
-import TextInput from '@src/components/forms/TextInput.vue';
-import SelectInput from '@src/components/forms/SelectInput.vue';
-import NumberInput from '@src/components/forms/NumberInput.vue';
 import Commands from '@src/components/forms/Commands.vue';
-import PrunButton from '@src/components/PrunButton.vue';
 import DateInput from '@src/components/forms/DateInput.vue';
-import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
+import NumberInput from '@src/components/forms/NumberInput.vue';
+import SelectInput from '@src/components/forms/SelectInput.vue';
+import TextInput from '@src/components/forms/TextInput.vue';
+import { isRepairableBuilding } from '@src/core/buildings';
+import { getPlanetBurn } from '@src/core/burn';
+import { mergeMaterialAmounts, sortMaterialAmounts } from '@src/core/sort-materials';
 import {
   getEntityNameFromAddress,
   getEntityNaturalIdFromAddress,
 } from '@src/infrastructure/prun-api/data/addresses';
-import { getPlanetBurn } from '@src/core/burn';
+import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { createId } from '@src/store/create-id';
 import { fixed0 } from '@src/utils/format';
-import { isRepairableBuilding } from '@src/core/buildings';
-import { mergeMaterialAmounts, sortMaterialAmounts } from '@src/core/sort-materials';
 
 const { onDelete, onSave, task } = defineProps<{
   onDelete?: () => void;
@@ -26,7 +26,7 @@ const { onDelete, onSave, task } = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 
-const types: UserData.TaskType[] = ['Text', 'Resupply', 'Repair'];
+const types: UserData.TaskType[] = ['Text', 'Resupply', 'Repair', 'Building'];
 const type = ref(task.type);
 
 const text = ref(task.text);
@@ -34,6 +34,9 @@ const dueDate = ref(formatDateForInput(task.dueDate));
 const recurring = ref(task.recurring);
 const days = ref(task.days);
 const buildingAge = ref(task.buildingAge);
+let buildingCategory = 'Infrastructure';
+let buildingAddAmt = 1;
+const buildings = ref(task.buildings ?? []);
 
 function formatDateForInput(date: number | undefined) {
   if (!date) {
@@ -54,10 +57,121 @@ const planets = computed(() => {
   }
 
   return (sitesStore.all.value ?? []).map(x => ({
-    label: getEntityNameFromAddress(x.address),
-    value: getEntityNaturalIdFromAddress(x.address),
+    label: getEntityNameFromAddress(x.address) || '',
+    value: getEntityNaturalIdFromAddress(x.address) || '',
   }));
 });
+
+const buildingCategoriesLabels = {
+  Infrastructure: ['HB1', 'HB2', 'HB3', 'HB4', 'HB5', 'HBB', 'HBC', 'HBL', 'HBM', 'STO'],
+  Resources: ['COL', 'EXT', 'RIG'],
+  Pioneers: ['BMP', 'FRM', 'FP', 'INC', 'PP1', 'SME', 'WEL'],
+  Settlers: [
+    'CHP',
+    'CLF',
+    'EDM',
+    'FER',
+    'FS',
+    'GF',
+    'HYF',
+    'PPF',
+    'POL',
+    'PP2',
+    'REF',
+    'UPF',
+    'WPL',
+  ],
+  Technicians: [
+    'CLR',
+    'ELP',
+    'ECA',
+    'HWP',
+    'IVP',
+    'LAB',
+    'MCA',
+    'ORC',
+    'PHF',
+    'PP3',
+    'SKF',
+    'SCA',
+    'SD',
+    'TMP',
+  ],
+  Engineers: ['AML', 'ASM', 'APF', 'DRS', 'PP4', 'SE', 'SPP'],
+  Scientists: ['AAF', 'EEP', 'SL', 'SPF'],
+};
+
+const buildingCategories = {
+  Infrastructure: [
+    'Pioneer Habitation',
+    'Settler Habitation',
+    'Technician Habitation',
+    'Engineer Habitation',
+    'Scientist Habitation',
+    'Barracks',
+    'Communal Abode',
+    'Luxury Residence',
+    'Management Domicile',
+    'Storage Facility',
+  ],
+  Resources: ['Collector', 'Extractor', 'Rig'],
+  Pioneers: [
+    'Basic Materials Plant',
+    'Farmstead',
+    'Food Processor',
+    'Incinerator',
+    'Prefab Plant MK1',
+    'Smelter',
+    'Welding Plant',
+  ],
+  Settlers: [
+    'Chemical Plant',
+    'Textile Manufacturing',
+    'Electronic Device Manufactory',
+    'Fermenter',
+    'Metalist Studio',
+    'Glass Furnace',
+    'Hydoponics Farm',
+    '3D Printer',
+    'Polymer Plant',
+    'Prefab Plant MK2',
+    'Unit Prefab Plant',
+    'Weaving Plant',
+  ],
+  Technicians: [
+    'Cleanroom',
+    'Electronics Plant',
+    'Energy Component Assembly',
+    'Energy Component Assembly',
+    'Hull Welding Plant',
+    'In-Vitro Plant',
+    'Laboratory',
+    'Medium Components Assembly',
+    'Orchard',
+    'Pharma Factory',
+    'Prefab Plant MK3',
+    'Ship Kit Factory',
+    'Small Components Assembly',
+    'Software Development',
+    'Software Development',
+    'Technetium Processing',
+  ],
+  Engineers: [
+    'Advanced Material Lab',
+    'High-Power Blast Furnace',
+    'Appliances Factory',
+    'Drone Shop',
+    'Prefab Plant MK4',
+    'Software Engineering',
+    'Spacecraft Prefab Plant',
+  ],
+  Scientists: [
+    'Advanced Appliances Factory',
+    'Einsteinium Enrichment',
+    'Software Labs',
+    'Spacecraft Propulsion Factory',
+  ],
+};
 
 const planet = ref(
   planets.value.find(x => x.value === task.planet)?.value ?? planets.value[0]?.value,
@@ -143,6 +257,12 @@ function onSaveClick() {
       });
     }
   }
+  if (type.value == 'Building') {
+    task.buildings = buildings.value;
+    task.text = text.value;
+
+    let materials: PrunApi.MaterialAmount[] = [];
+  }
   onSave?.();
   emit('close');
 }
@@ -150,6 +270,16 @@ function onSaveClick() {
 function onDeleteClick() {
   onDelete?.();
   emit('close');
+}
+
+function addBuilding() {
+  buildingAddAmt++;
+  buildings.value.push(['HAB1', 1]);
+}
+
+function remBuilding() {
+  buildingAddAmt--;
+  buildings.value.pop();
 }
 </script>
 
@@ -164,6 +294,7 @@ function onDeleteClick() {
         <DateInput v-model="dueDate" />
       </Active>
       <Active
+        v-if="type !== 'Building'"
         label="Recurring period"
         tooltip="An amount of days the due date will advance on task completion.">
         <NumberInput v-model="recurring" />
@@ -189,7 +320,33 @@ function onDeleteClick() {
           <NumberInput v-model="buildingAge" />
         </Active>
       </template>
+      <template v-if="type === 'Building'">
+        <Active label="Text">
+          <TextInput v-model="text" />
+        </Active>
+        <Active label="Building Category">
+          <SelectInput
+            v-model="buildingCategory"
+            :options="Object.keys(buildingCategoriesLabels)" />
+        </Active>
+        <template v-for="building in buildings">
+          <Active label="Building">
+            <SelectInput
+              v-model="building[0]"
+              :options="buildingCategoriesLabels[buildingCategory]" />
+          </Active>
+          <Active label="Amount" tooltip="Amount of the selected building">
+            <NumberInput v-model="building[1]" />
+          </Active>
+        </template>
+      </template>
       <Commands>
+        <PrunButton v-if="type === 'Building'" primary @click="addBuilding"
+          >ADD BUILDING</PrunButton
+        >
+        <PrunButton v-if="type === 'Building' && buildingAddAmt > 1" primary @click="remBuilding"
+          >REMOVE BUILDING
+        </PrunButton>
         <PrunButton primary @click="onSaveClick">SAVE</PrunButton>
         <PrunButton v-if="onDelete" danger @click="onDeleteClick">DELETE</PrunButton>
       </Commands>
