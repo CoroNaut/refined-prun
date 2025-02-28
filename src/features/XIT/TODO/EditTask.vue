@@ -100,7 +100,7 @@ const buildingCategoriesLabels = {
   Engineers: ['AML', 'ASM', 'APF', 'DRS', 'PP4', 'SE', 'SPP'],
   Scientists: ['AAF', 'EEP', 'SL', 'SPF'],
 };
-
+/*
 const buildingCategories = {
   Infrastructure: [
     'Pioneer Habitation',
@@ -172,7 +172,7 @@ const buildingCategories = {
     'Spacecraft Propulsion Factory',
   ],
 };
-
+*/
 const planet = ref(
   planets.value.find(x => x.value === task.planet)?.value ?? planets.value[0]?.value,
 );
