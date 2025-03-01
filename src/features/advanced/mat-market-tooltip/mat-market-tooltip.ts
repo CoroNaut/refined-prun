@@ -57,7 +57,7 @@ function onTileReady(tile: PrunTile) {
     if (!container || !ticker.value || ticker.value === 'SHPT') {
       return;
     }
-    watchEffectWhileNodeAlive(label, () => {
+    watchEffectWhileNodeAlive(label, onCleanup => {
       const showTooltip = () => {
         store.showTooltip(container, ticker.value!);
       };
@@ -72,11 +72,10 @@ function onTileReady(tile: PrunTile) {
       if (container.hasAttribute('title')) {
         container.removeAttribute('title');
       }
-
-      return () => {
+      onCleanup(() => {
         container.removeEventListener('mouseenter', showTooltip);
         container.removeEventListener('mouseleave', hideTooltip);
-      };
+      });
     });
   });
 }
