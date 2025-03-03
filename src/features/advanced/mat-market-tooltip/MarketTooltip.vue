@@ -11,14 +11,11 @@ const buttons: [string, string][] = [
   ['Trade', 'CXPO'],
   ['CXM', 'CXM'],
 ];
+//@mouseleave="store.hideTooltip"
 </script>
 
 <template>
-  <div
-    id="mat_market_tooltip"
-    :class="$style.tooltip"
-    :style="store.tooltipStyle"
-    @mouseleave="store.hideTooltip">
+  <div id="mat_market_tooltip" :class="$style.tooltip" :style="store.tooltipStyle">
     <div v-if="store.materialID">
       <div>
         <SelectInput

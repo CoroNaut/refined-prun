@@ -48,6 +48,12 @@ export const store = reactive({
       this.tooltipStyle.left = containerRect.right.toString() + 'px';
     }
   },
+  clickedInside(event: MouseEvent): void {
+    const target = event.target as Node;
+    if (target && !this.tooltipElement.contains(target)) {
+      this.hideTooltip();
+    }
+  },
 });
 
 function onTileReady(tile: PrunTile) {
@@ -58,23 +64,29 @@ function onTileReady(tile: PrunTile) {
       return;
     }
     watchEffectWhileNodeAlive(label, onCleanup => {
-      const showTooltip = () => {
+      //const showTooltip = () => {
+      //  store.showTooltip(container, ticker.value!);
+      //};
+      const showTooltip = (event: { preventDefault: () => void }) => {
+        event.preventDefault();
         store.showTooltip(container, ticker.value!);
       };
-      const hideTooltip = () => {
-        if (!store.tooltipElement!.matches(':hover')) {
-          store.hideTooltip();
-        }
-      };
-      container.addEventListener('mouseenter', showTooltip);
-      container.addEventListener('mouseleave', hideTooltip);
+      //const hideTooltip = () => {
+      //  if (!store.tooltipElement!.matches(':hover')) {
+      //    store.hideTooltip();
+      //  }
+      //};
+      //container.addEventListener('mouseenter', showTooltip);
+      container.addEventListener('contextmenu', showTooltip);
+      //container.addEventListener('mouseleave', hideTooltip);
 
       if (container.hasAttribute('title')) {
         container.removeAttribute('title');
       }
       onCleanup(() => {
-        container.removeEventListener('mouseenter', showTooltip);
-        container.removeEventListener('mouseleave', hideTooltip);
+        //container.removeEventListener('mouseenter', showTooltip);
+        container.removeEventListener('contextmenu', showTooltip);
+        //container.removeEventListener('mouseleave', hideTooltip);
       });
     });
   });
@@ -84,6 +96,7 @@ async function init() {
   const container = document.getElementById('container');
   if (container?.parentElement) {
     store.setTooltipElement(createFragmentApp(MarketTooltip).appendTo(container));
+    container.addEventListener('click', event => store.clickedInside(event));
   }
 
   tiles.observe(
@@ -115,5 +128,5 @@ async function init() {
 features.add(
   import.meta.url,
   init,
-  'MAT: Hover over any material to quickly see material market buttons.',
+  'Right click or hover over any material to quickly see material market buttons.',
 );
