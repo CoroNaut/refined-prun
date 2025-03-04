@@ -31,7 +31,7 @@ export const store = reactive({
     return;
   },
   setMenuElement(componentInstance: ComponentPublicInstance) {
-    this.menuElement = (componentInstance as any).$el as HTMLElement;
+    this.menuElement = componentInstance.$el as HTMLElement;
   },
   setLocation(event: MouseEvent) {
     const documentRect = this.menuElement.parentElement!.getBoundingClientRect();

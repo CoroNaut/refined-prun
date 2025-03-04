@@ -48,9 +48,28 @@ shortcut(
     if (isEmpty(parameters)) {
       return undefined;
     }
-    const url = parameters.join('_');
-    return `https://docs.google.com/spreadsheets/d/${url}/edit?usp=sharing&rm=minimal`;
+    let documentId = parameters.join('_');
+    let gid: string | undefined;
+    if (documentId.length > 45) {
+      const lastUnderscoreIndex = documentId.lastIndexOf('_');
+
+      if (lastUnderscoreIndex !== -1) {
+        const possibleGid = documentId.substring(lastUnderscoreIndex + 1);
+        const trimmedDocumentId = documentId.substring(0, lastUnderscoreIndex);
+
+        if (/^\d{5,12}/.test(possibleGid) && trimmedDocumentId.length > 25) {
+          documentId = trimmedDocumentId;
+          gid = possibleGid;
+        }
+      }
+    }
+    let url = `https://docs.google.com/spreadsheets/d/${documentId}/edit?usp=sharing&rm=minimal`;
+    if (gid) {
+      url += `&gid=${gid}`;
+    }
+    return url;
   },
+  'Document ID',
   'Sheet ID',
 );
 

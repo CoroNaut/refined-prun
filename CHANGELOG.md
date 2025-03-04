@@ -1,14 +1,29 @@
-## Unreleased
-
-### Added
-
-- `prod-hide-percent`: New feature. Hides percent value from production lines.
-- `mat-market-tooltip`: New feature. Hover over any material to quickly see material market buttons
+## 25.2.27
 
 ### Fixed
 
-- Fix duplication of Materials in Transit asset value in Long-Term Materials Receivable
+- `XIT SHEET`: Fix parsing Document IDs with underscores
+- `inv-compress-inventory-info`: Fix usability issues in smaller tiles and bring back address link
+
+## 25.2.25
+
+### Added
+
+- `XIT CXTS`: Add purchases/sales to the daily summary
+- `XIT SHEET`: Add an optional parameter for Sheet ID
+- `context-controls-no-hover`: (new) Prevents the context controls from displaying description while hovering over
+- `inv-compress-inventory-info`: (new) Compresses specific inventory info into a row
+- `prod-hide-percent`: (new) Hides percent value from production lines
+
+### Changed
+
+- `XIT CXTS`: Hide daily summary for days with only a single trade
+
+### Fixed
+
 - `prod-order-eta`: Fix completion time being calculated incorrectly
+- `prun-bugs`: Fix material icons in the PROD and PRODQ buffers not being clickable
+- Fix duplication of Materials in Transit asset value in Long-Term Materials Receivable
 
 ## 25.2.11
 
