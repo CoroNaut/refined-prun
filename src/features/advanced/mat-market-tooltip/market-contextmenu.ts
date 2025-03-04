@@ -1,10 +1,10 @@
 import { showBuffer } from '@src/infrastructure/prun-ui/buffers';
+import { userData } from '@src/store/user-data';
 import { refTextContent } from '@src/utils/reactive-dom';
 import { ComponentPublicInstance, reactive } from 'vue';
 import MarketMenu from './MarketMenu.vue';
 
 export const store = reactive({
-  selectedExchange: 'AI1',
   materialID: '',
   menuElement: {} as HTMLElement,
   menuStyle: {
@@ -26,7 +26,7 @@ export const store = reactive({
     if (cmd === 'CXM') {
       return showBuffer(`CXM ${this.materialID}`);
     } else if (['CXP', 'CXPC', 'CXPO', 'CXOB'].includes(cmd)) {
-      return showBuffer(`${cmd} ${this.materialID}.${this.selectedExchange}`);
+      return showBuffer(`${cmd} ${this.materialID}.${userData.settings.contextMenuExchange}`);
     }
     return;
   },

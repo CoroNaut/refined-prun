@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import PrunButton from '@src/components/PrunButton.vue';
+import { userData } from '@src/store/user-data';
 import { store } from './market-contextmenu';
 
-const exchanges: string[] = ['AI1', 'CI1', 'IC1', 'NC1', 'CI2', 'NC2'];
+const exchanges: UserData.Exchange[] = ['AI1', 'CI1', 'CI2', 'IC1', 'NC1', 'NC2'];
 const buttons: [string, string][] = [
   ['Info', 'CXP'],
   ['Chart', 'CXPC'],
@@ -24,7 +25,7 @@ const buttons: [string, string][] = [
               C.fonts.fontRegular,
               $style.exchangeSelect,
             ]"
-            >{{ store.selectedExchange }}</span
+            >{{ userData.settings.contextMenuExchange }}</span
           >
           <span
             :class="[
@@ -39,10 +40,10 @@ const buttons: [string, string][] = [
             <PrunButton
               v-for="exchange in exchanges"
               :key="exchange"
-              :dark="store.selectedExchange !== exchange"
-              :primary="store.selectedExchange === exchange"
+              :dark="userData.settings.contextMenuExchange !== exchange"
+              :primary="userData.settings.contextMenuExchange === exchange"
               :class="$style.prunButton"
-              @click="store.selectedExchange = exchange">
+              @click="userData.settings.contextMenuExchange = exchange">
               {{ exchange }}
             </PrunButton>
           </div>
