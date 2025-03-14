@@ -57,7 +57,7 @@ export function changeInputValue(input: HTMLInputElement, value: string) {
   // React overrides the native property, so we can't use it directly.
   const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
   setter!.set!.call(input, value);
-  const event = new Event('input', { bubbles: true, cancelable: true });
+  const event = new InputEvent('input', { bubbles: true, cancelable: true });
   input.dispatchEvent(event);
   const changeEvent = new Event('change', { bubbles: true, cancelable: true });
   input.dispatchEvent(changeEvent);
@@ -72,6 +72,11 @@ export function changeSelectIndex(input, selectIndex) {
   setter!.set!.call(input, selectIndex);
   const changeEvent = new Event('change', { bubbles: true, cancelable: true });
   input.dispatchEvent(changeEvent);
+}
+
+export function focusElement(input: HTMLElement) {
+  const event = new FocusEvent('focusin', { bubbles: true, cancelable: false });
+  input.dispatchEvent(event);
 }
 
 // Return all matching buffers
@@ -251,4 +256,14 @@ export async function clickElement(element?: HTMLElement | null) {
       view: window,
     }),
   );
+}
+
+export function mouseOverElement(from: HTMLElement, to: HTMLElement) {
+  const mouseEvent = new MouseEvent('mouseout', {
+    bubbles: true,
+    cancelable: true,
+    relatedTarget: to,
+    view: window,
+  });
+  from.dispatchEvent(mouseEvent);
 }

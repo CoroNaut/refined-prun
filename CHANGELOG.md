@@ -1,3 +1,29 @@
+## Unreleased
+
+### Changed
+
+- `XIT REP`: Use planet id in the `BRA` context button
+
+### Fixed
+
+- `XIT GIF`: Fix borked gifs
+- `contd-fill-condition-address`: Fix incorrect address selection
+- `focus-buffers-on-click`: Disable this feature in `HQ` to fix relocation input resetting
+- `prun-bugs`: Fix scrollbar gutter in `PROD` taking up space without a scrollbar present
+
+## 25.3.8
+
+### Added
+
+- `contd-fill-condition-address`: (new) Fills the address field in the condition editor
+- `highlight-production-order-error`: (new) Highlights production orders with errors in `PROD`, `PRODQ`, and `PRODCO`
+- `shipment-item-detail`: Add font auto-sizing
+
+### Fixed
+
+- `prun-bugs`: Fix `CONTD` condition saving issues when amount is not changed
+- Fix incorrect bolding of commands in context controls added by Refined PrUn
+
 ## 25.2.27
 
 ### Fixed
