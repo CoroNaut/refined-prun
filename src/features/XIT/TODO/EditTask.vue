@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { planetsStore } from '@src/infrastructure/prun-api/data/planets';
 import PrunButton from '@src/components/PrunButton.vue';
 import SectionHeader from '@src/components/SectionHeader.vue';
 import Active from '@src/components/forms/Active.vue';
@@ -34,9 +35,6 @@ const dueDate = ref(formatDateForInput(task.dueDate));
 const recurring = ref(task.recurring);
 const days = ref(task.days);
 const buildingAge = ref(task.buildingAge);
-let buildingCategory = 'Infrastructure';
-let buildingAddAmt = 1;
-const buildings = ref(task.buildings ?? []);
 
 function formatDateForInput(date: number | undefined) {
   if (!date) {
@@ -100,79 +98,15 @@ const buildingCategoriesLabels = {
   Engineers: ['AML', 'ASM', 'APF', 'DRS', 'PP4', 'SE', 'SPP'],
   Scientists: ['AAF', 'EEP', 'SL', 'SPF'],
 };
-/*
-const buildingCategories = {
-  Infrastructure: [
-    'Pioneer Habitation',
-    'Settler Habitation',
-    'Technician Habitation',
-    'Engineer Habitation',
-    'Scientist Habitation',
-    'Barracks',
-    'Communal Abode',
-    'Luxury Residence',
-    'Management Domicile',
-    'Storage Facility',
-  ],
-  Resources: ['Collector', 'Extractor', 'Rig'],
-  Pioneers: [
-    'Basic Materials Plant',
-    'Farmstead',
-    'Food Processor',
-    'Incinerator',
-    'Prefab Plant MK1',
-    'Smelter',
-    'Welding Plant',
-  ],
-  Settlers: [
-    'Chemical Plant',
-    'Textile Manufacturing',
-    'Electronic Device Manufactory',
-    'Fermenter',
-    'Metalist Studio',
-    'Glass Furnace',
-    'Hydoponics Farm',
-    '3D Printer',
-    'Polymer Plant',
-    'Prefab Plant MK2',
-    'Unit Prefab Plant',
-    'Weaving Plant',
-  ],
-  Technicians: [
-    'Cleanroom',
-    'Electronics Plant',
-    'Energy Component Assembly',
-    'Energy Component Assembly',
-    'Hull Welding Plant',
-    'In-Vitro Plant',
-    'Laboratory',
-    'Medium Components Assembly',
-    'Orchard',
-    'Pharma Factory',
-    'Prefab Plant MK3',
-    'Ship Kit Factory',
-    'Small Components Assembly',
-    'Software Development',
-    'Software Development',
-    'Technetium Processing',
-  ],
-  Engineers: [
-    'Advanced Material Lab',
-    'High-Power Blast Furnace',
-    'Appliances Factory',
-    'Drone Shop',
-    'Prefab Plant MK4',
-    'Software Engineering',
-    'Spacecraft Prefab Plant',
-  ],
-  Scientists: [
-    'Advanced Appliances Factory',
-    'Einsteinium Enrichment',
-    'Software Labs',
-    'Spacecraft Propulsion Factory',
-  ],
-};
-*/
+
+const buildingPlanet = ref('');
+const buildingPlanetMaterials = ref('');
+const buildingCategory = ref('Infrastructure');
+const buildingAddAmt = ref(1);
+const buildings = ref<Array<[string, number]>>([
+  [buildingCategoriesLabels[buildingCategory.value][0], 1],
+]);
+
 const planet = ref(
   planets.value.find(x => x.value === task.planet)?.value ?? planets.value[0]?.value,
 );
@@ -182,6 +116,48 @@ watchEffect(() => {
   const site = sitesStore.getByPlanetNaturalId(planet.value);
   getPlanetBurn(site);
 });
+
+watchEffect(async () => {
+  if (planetsStore.find(buildingPlanet.value)) {
+    await fetch(`https://rest.fnar.net/planet/${buildingPlanet.value}`)
+      .then(response => response.json())
+      .then(planet => {
+        getPlanetEnvironmentMaterials(planet);
+      });
+  } else {
+    buildingPlanetMaterials.value = '';
+  }
+});
+
+function getPlanetEnvironmentMaterials(planet: {
+  Gravity: number;
+  Pressure: number;
+  Temperature: number;
+  Surface: boolean;
+}) {
+  const materials: string[] = [];
+  if (planet.Surface) {
+    materials.push('MCG');
+  } else {
+    materials.push('AEF');
+  }
+  if (planet.Pressure < 0.25) {
+    materials.push('SEA');
+  } else if (planet.Pressure > 2.0) {
+    materials.push('HSE');
+  }
+  if (planet.Gravity < 0.25) {
+    materials.push('MGC');
+  } else if (planet.Gravity > 2.5) {
+    materials.push('BL');
+  }
+  if (planet.Temperature < -25) {
+    materials.push('INS');
+  } else if (planet.Temperature > 75) {
+    materials.push('TSH');
+  }
+  buildingPlanetMaterials.value = materials.join(', ');
+}
 
 function onSaveClick() {
   task.type = type.value;
@@ -259,7 +235,12 @@ function onSaveClick() {
   }
   if (type.value == 'Building') {
     task.buildings = buildings.value;
-    task.text = text.value;
+
+    //get the planet Info
+    //fetch(`https://rest.fnar.net/`)
+    //.then(response => response.json())
+    // .then(data => {
+    // });
 
     let materials: PrunApi.MaterialAmount[] = [];
   }
@@ -273,12 +254,12 @@ function onDeleteClick() {
 }
 
 function addBuilding() {
-  buildingAddAmt++;
-  buildings.value.push(['HAB1', 1]);
+  buildingAddAmt.value++;
+  buildings.value.push(['', 1]);
 }
 
 function remBuilding() {
-  buildingAddAmt--;
+  buildingAddAmt.value--;
   buildings.value.pop();
 }
 </script>
@@ -321,9 +302,12 @@ function remBuilding() {
         </Active>
       </template>
       <template v-if="type === 'Building'">
-        <Active label="Text">
-          <TextInput v-model="text" />
+        <Active label="Planet">
+          <TextInput v-model="buildingPlanet" />
         </Active>
+        <Commands label="Planet materials">
+          <div :class="$style.buildingPlanetMaterials">{{ buildingPlanetMaterials }}</div>
+        </Commands>
         <Active label="Building Category">
           <SelectInput
             v-model="buildingCategory"
@@ -339,17 +323,26 @@ function remBuilding() {
             <NumberInput v-model="building[1]" />
           </Active>
         </template>
+        <Commands>
+          <PrunButton v-if="type === 'Building'" primary @click="addBuilding">ADD</PrunButton>
+          <PrunButton v-if="type === 'Building' && buildingAddAmt > 1" primary @click="remBuilding"
+            >REMOVE</PrunButton
+          >
+        </Commands>
       </template>
       <Commands>
-        <PrunButton v-if="type === 'Building'" primary @click="addBuilding"
-          >ADD BUILDING</PrunButton
-        >
-        <PrunButton v-if="type === 'Building' && buildingAddAmt > 1" primary @click="remBuilding"
-          >REMOVE BUILDING
-        </PrunButton>
         <PrunButton primary @click="onSaveClick">SAVE</PrunButton>
         <PrunButton v-if="onDelete" danger @click="onDeleteClick">DELETE</PrunButton>
       </Commands>
     </form>
   </div>
 </template>
+
+<style module>
+.buildingPlanetMaterials {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
+}
+</style>
