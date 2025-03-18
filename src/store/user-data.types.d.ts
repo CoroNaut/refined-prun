@@ -95,6 +95,7 @@ declare namespace UserData {
     planet?: string;
     days?: number;
     buildingAge?: number;
+    buildingPlanet?: string;
     buildings?: [string, number][];
     subtasks?: Task[];
   }

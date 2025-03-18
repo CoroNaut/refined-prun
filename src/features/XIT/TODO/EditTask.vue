@@ -235,6 +235,9 @@ function onSaveClick() {
   }
   if (type.value == 'Building') {
     task.buildings = buildings.value;
+    task.buildingPlanet = buildingPlanet.value;
+
+    buildingPlanetMaterials;
 
     //get the planet Info
     //fetch(`https://rest.fnar.net/`)
