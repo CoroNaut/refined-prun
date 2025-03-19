@@ -85,6 +85,12 @@ function onCheckmarkClick() {
 }
 
 .subtask {
+  ~ div .subtask {
+    ~ div .subtask {
+      padding-left: 57px;
+    }
+    padding-left: 42px;
+  }
   padding-left: 27px;
   cursor: initial;
   user-select: initial;

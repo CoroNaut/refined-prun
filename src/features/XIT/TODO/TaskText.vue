@@ -29,6 +29,9 @@ const parts = computed(() => {
       case 'p':
         parts.push({ text: match[2], command: `BS ${match[2]}` });
         break;
+      case 'b':
+        parts.push({ text: match[2], command: `BUI ${match[2]}` });
+        break;
       default:
         parts.push({ text: match[0] });
         break;

@@ -18,10 +18,7 @@ import {
 import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { createId } from '@src/store/create-id';
 import { fixed0 } from '@src/utils/format';
-import { allBuildingCategories, allBuildingCosts } from './allbuildingmaterials';
-import { build } from 'vite';
 import { materialsStore } from '@src/infrastructure/prun-api/data/materials';
-import TaskList from './TaskList.vue';
 import RadioItem from '@src/components/forms/RadioItem.vue';
 
 const { onDelete, onSave, task } = defineProps<{
@@ -72,14 +69,44 @@ const buildingCategory = ref(task.buildingCategory ?? 'Infrastructure');
 const buildingEnvironmentMaterials = ref<string[]>(task.buildingEnvironmentMaterials ?? []);
 const includeCM = ref(task.includeCM ?? false);
 
-interface BuildingCost {
-  Ticker: string;
-  AreaCost: number;
-  BuildingCosts: {
-    CommodityTicker: string;
-    Amount: number;
-  }[];
-}
+const allBuildingCategories = {
+  Infrastructure: ['HB1', 'HB2', 'HB3', 'HB4', 'HB5', 'HBB', 'HBC', 'HBL', 'HBM', 'STO'],
+  Resources: ['COL', 'EXT', 'RIG'],
+  Pioneers: ['BMP', 'FRM', 'FP', 'INC', 'PP1', 'SME', 'WEL'],
+  Settlers: [
+    'CHP',
+    'CLF',
+    'EDM',
+    'FER',
+    'FS',
+    'GF',
+    'HYF',
+    'PPF',
+    'POL',
+    'PP2',
+    'REF',
+    'UPF',
+    'WPL',
+  ],
+  Technicians: [
+    'CLR',
+    'ELP',
+    'ECA',
+    'HWP',
+    'IVP',
+    'LAB',
+    'MCA',
+    'ORC',
+    'PHF',
+    'PP3',
+    'SKF',
+    'SCA',
+    'SD',
+    'TMP',
+  ],
+  Engineers: ['AML', 'ASM', 'APF', 'DRS', 'PP4', 'SE', 'SPP'],
+  Scientists: ['AAF', 'EEP', 'SL', 'SPF'],
+};
 
 const planet = ref(
   planets.value.find(x => x.value === task.planet)?.value ?? planets.value[0]?.value,
@@ -234,16 +261,32 @@ async function onSaveClick() {
       buildings.value = buildings.value.filter(building => building[0] !== 'CM');
     }
 
+    const fetches: [string, number][] = [];
     for (const building of buildings.value) {
-      const buildingCost = allBuildingCosts.find(
-        buildingCost => buildingCost.Ticker === building[1],
-      )!;
-      totalArea += buildingCost.AreaCost * building[2];
-      totalBuildings += building[2];
-      materialAEF += Math.ceil(buildingCost.AreaCost / 3) * building[2];
-      for (const constructionMaterial of buildingCost.BuildingCosts) {
+      fetches.push([building[1], building[2]]);
+    }
+
+    const promises = fetches.map(async building => {
+      const buildingInfo = (await fetch(`https://rest.fnar.net/building/${building[0]}`).then(
+        response => response.json(),
+      )) as FioApi.Building;
+      return { buildingInfo: buildingInfo, amount: building[1] };
+    });
+
+    const resolvedBuildings = await Promise.all(promises);
+
+    for (const building of resolvedBuildings) {
+      console.log(building);
+
+      totalArea += building.buildingInfo.AreaCost * building.amount;
+      totalBuildings += building.amount;
+      materialAEF += Math.ceil(building.buildingInfo.AreaCost / 3) * building.amount;
+      for (const constructionMaterial of building.buildingInfo.BuildingCosts) {
         const material = materialsStore.getByTicker(constructionMaterial.CommodityTicker)!;
-        materials.push({ material: material, amount: constructionMaterial.Amount * building[2] });
+        materials.push({
+          material: material,
+          amount: constructionMaterial.Amount * building.amount,
+        });
       }
     }
 
@@ -280,12 +323,31 @@ async function onSaveClick() {
       environmentMaterialsText = 'Environment Materials: ' + environmentMaterialsText.substring(2);
     }
 
-    task.text = `Construct ${totalBuildings} buildings at [[p:${buildingPlanet.value.toUpperCase()}]]. 
+    task.text = `Construct base [[p:${buildingPlanet.value.toUpperCase()}]]. 
       Area: ${totalArea}. ${environmentMaterialsText}`;
 
     task.subtasks = [];
+    task.subtasks.push({
+      id: createId(),
+      type: 'Text',
+      text: `${totalBuildings} buildings:`,
+      subtasks: [],
+    });
+    for (const building of resolvedBuildings) {
+      task.subtasks[0].subtasks!.push({
+        id: createId(),
+        type: 'Text',
+        text: `${building.amount} [[b:${building.buildingInfo.Ticker}]]`,
+      });
+    }
+    task.subtasks.push({
+      id: createId(),
+      type: 'Text',
+      text: `Materials:`,
+      subtasks: [],
+    });
     for (const material of materials) {
-      task.subtasks.push({
+      task.subtasks[1].subtasks!.push({
         id: createId(),
         type: 'Text',
         text: `${material.amount} [[m:${material.material.ticker}]]`,
