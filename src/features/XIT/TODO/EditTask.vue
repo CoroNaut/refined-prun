@@ -18,6 +18,11 @@ import {
 import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import { createId } from '@src/store/create-id';
 import { fixed0 } from '@src/utils/format';
+import { allBuildingCategories, allBuildingCosts } from './allbuildingmaterials';
+import { build } from 'vite';
+import { materialsStore } from '@src/infrastructure/prun-api/data/materials';
+import TaskList from './TaskList.vue';
+import RadioItem from '@src/components/forms/RadioItem.vue';
 
 const { onDelete, onSave, task } = defineProps<{
   onDelete?: () => void;
@@ -60,52 +65,21 @@ const planets = computed(() => {
   }));
 });
 
-const buildingCategoriesLabels = {
-  Infrastructure: ['HB1', 'HB2', 'HB3', 'HB4', 'HB5', 'HBB', 'HBC', 'HBL', 'HBM', 'STO'],
-  Resources: ['COL', 'EXT', 'RIG'],
-  Pioneers: ['BMP', 'FRM', 'FP', 'INC', 'PP1', 'SME', 'WEL'],
-  Settlers: [
-    'CHP',
-    'CLF',
-    'EDM',
-    'FER',
-    'FS',
-    'GF',
-    'HYF',
-    'PPF',
-    'POL',
-    'PP2',
-    'REF',
-    'UPF',
-    'WPL',
-  ],
-  Technicians: [
-    'CLR',
-    'ELP',
-    'ECA',
-    'HWP',
-    'IVP',
-    'LAB',
-    'MCA',
-    'ORC',
-    'PHF',
-    'PP3',
-    'SKF',
-    'SCA',
-    'SD',
-    'TMP',
-  ],
-  Engineers: ['AML', 'ASM', 'APF', 'DRS', 'PP4', 'SE', 'SPP'],
-  Scientists: ['AAF', 'EEP', 'SL', 'SPF'],
-};
+const buildingPlanet = ref(task.buildingPlanet ?? '');
+const buildings = ref<Array<[string, string, number]>>(task.buildings ?? []);
+const buildingAddAmt = ref(task.buildingAddAmt ?? 0);
+const buildingCategory = ref(task.buildingCategory ?? 'Infrastructure');
+const buildingEnvironmentMaterials = ref<string[]>(task.buildingEnvironmentMaterials ?? []);
+const includeCM = ref(task.includeCM ?? false);
 
-const buildingPlanet = ref('');
-const buildingPlanetMaterials = ref('');
-const buildingCategory = ref('Infrastructure');
-const buildingAddAmt = ref(1);
-const buildings = ref<Array<[string, number]>>([
-  [buildingCategoriesLabels[buildingCategory.value][0], 1],
-]);
+interface BuildingCost {
+  Ticker: string;
+  AreaCost: number;
+  BuildingCosts: {
+    CommodityTicker: string;
+    Amount: number;
+  }[];
+}
 
 const planet = ref(
   planets.value.find(x => x.value === task.planet)?.value ?? planets.value[0]?.value,
@@ -125,7 +99,7 @@ watchEffect(async () => {
         getPlanetEnvironmentMaterials(planet);
       });
   } else {
-    buildingPlanetMaterials.value = '';
+    buildingEnvironmentMaterials.value = [];
   }
 });
 
@@ -156,10 +130,10 @@ function getPlanetEnvironmentMaterials(planet: {
   } else if (planet.Temperature > 75) {
     materials.push('TSH');
   }
-  buildingPlanetMaterials.value = materials.join(', ');
+  buildingEnvironmentMaterials.value = materials;
 }
 
-function onSaveClick() {
+async function onSaveClick() {
   task.type = type.value;
   if (dueDate.value) {
     const [year, month, day] = dueDate.value.split('-').map(x => parseInt(x, 10));
@@ -174,6 +148,8 @@ function onSaveClick() {
   delete task.planet;
   delete task.days;
   delete task.buildingAge;
+  delete task.buildingPlanet;
+  delete task.buildings;
   delete task.subtasks;
   if (type.value === 'Text') {
     task.text = text.value;
@@ -234,18 +210,87 @@ function onSaveClick() {
     }
   }
   if (type.value == 'Building') {
-    task.buildings = buildings.value;
+    if (buildingEnvironmentMaterials.value.length === 0 || buildingAddAmt.value === 0) {
+      return;
+    }
+
     task.buildingPlanet = buildingPlanet.value;
-
-    buildingPlanetMaterials;
-
-    //get the planet Info
-    //fetch(`https://rest.fnar.net/`)
-    //.then(response => response.json())
-    // .then(data => {
-    // });
+    task.buildings = buildings.value;
+    task.buildingAddAmt = buildingAddAmt.value;
+    task.buildingCategory = buildingCategory.value;
+    task.buildingEnvironmentMaterials = buildingEnvironmentMaterials.value;
+    task.includeCM = includeCM.value;
 
     let materials: PrunApi.MaterialAmount[] = [];
+    let totalArea = 0;
+    let totalBuildings = 0;
+    let materialAEF = 0;
+
+    if (includeCM.value) {
+      if (buildings.value.findIndex(building => building[0] === 'CM') === -1) {
+        buildings.value.push(['CM', 'CM', 1]);
+      }
+    } else {
+      buildings.value = buildings.value.filter(building => building[0] !== 'CM');
+    }
+
+    for (const building of buildings.value) {
+      const buildingCost = allBuildingCosts.find(
+        buildingCost => buildingCost.Ticker === building[1],
+      )!;
+      totalArea += buildingCost.AreaCost * building[2];
+      totalBuildings += building[2];
+      materialAEF += Math.ceil(buildingCost.AreaCost / 3) * building[2];
+      for (const constructionMaterial of buildingCost.BuildingCosts) {
+        const material = materialsStore.getByTicker(constructionMaterial.CommodityTicker)!;
+        materials.push({ material: material, amount: constructionMaterial.Amount * building[2] });
+      }
+    }
+
+    for (const environmentMaterial of buildingEnvironmentMaterials.value) {
+      let amount = 0;
+      if (environmentMaterial === 'MCG') {
+        amount = totalArea * 4;
+      } else if (environmentMaterial === 'AEF') {
+        amount = materialAEF;
+      } else if (environmentMaterial === 'SEA') {
+        amount = totalArea;
+      } else if (environmentMaterial === 'HSE') {
+        amount = totalBuildings;
+      } else if (environmentMaterial === 'MGC') {
+        amount = totalBuildings;
+      } else if (environmentMaterial === 'BL') {
+        amount = totalBuildings;
+      } else if (environmentMaterial === 'INS') {
+        amount = totalArea * 10;
+      } else if (environmentMaterial === 'TSH') {
+        amount = totalBuildings;
+      }
+      const material = materialsStore.getByTicker(environmentMaterial)!;
+      materials.push({ material: material, amount: amount });
+    }
+
+    materials = sortMaterialAmounts(mergeMaterialAmounts(materials));
+
+    let environmentMaterialsText = '';
+    if (buildingEnvironmentMaterials.value.length > 0) {
+      for (const material of buildingEnvironmentMaterials.value) {
+        environmentMaterialsText += `, [[m:${material}]]`;
+      }
+      environmentMaterialsText = 'Environment Materials: ' + environmentMaterialsText.substring(2);
+    }
+
+    task.text = `Construct ${totalBuildings} buildings at [[p:${buildingPlanet.value.toUpperCase()}]]. 
+      Area: ${totalArea}. ${environmentMaterialsText}`;
+
+    task.subtasks = [];
+    for (const material of materials) {
+      task.subtasks.push({
+        id: createId(),
+        type: 'Text',
+        text: `${material.amount} [[m:${material.material.ticker}]]`,
+      });
+    }
   }
   onSave?.();
   emit('close');
@@ -258,13 +303,26 @@ function onDeleteClick() {
 
 function addBuilding() {
   buildingAddAmt.value++;
-  buildings.value.push(['', 1]);
+  buildings.value.push([
+    buildingCategory.value,
+    allBuildingCategories[buildingCategory.value][0],
+    1,
+  ]);
 }
 
 function remBuilding() {
   buildingAddAmt.value--;
   buildings.value.pop();
 }
+const $style = useCssModule();
+
+const validPlanet = computed(() => {
+  if (buildingEnvironmentMaterials.value.length === 0) {
+    return $style.invalidPlanet;
+  } else {
+    return $style.validPlanet;
+  }
+});
 </script>
 
 <template>
@@ -305,30 +363,41 @@ function remBuilding() {
         </Active>
       </template>
       <template v-if="type === 'Building'">
+        <Active label="Core Module">
+          <RadioItem v-model="includeCM">
+            <div>Include</div>
+          </RadioItem>
+        </Active>
         <Active label="Planet">
           <TextInput v-model="buildingPlanet" />
         </Active>
         <Commands label="Planet materials">
-          <div :class="$style.buildingPlanetMaterials">{{ buildingPlanetMaterials }}</div>
+          <div :class="[$style.buildingPlanetMaterials, validPlanet]">{{
+            buildingEnvironmentMaterials
+          }}</div>
         </Commands>
-        <Active label="Building Category">
-          <SelectInput
-            v-model="buildingCategory"
-            :options="Object.keys(buildingCategoriesLabels)" />
-        </Active>
         <template v-for="building in buildings">
-          <Active label="Building">
-            <SelectInput
-              v-model="building[0]"
-              :options="buildingCategoriesLabels[buildingCategory]" />
-          </Active>
-          <Active label="Amount" tooltip="Amount of the selected building">
-            <NumberInput v-model="building[1]" />
-          </Active>
+          <template v-if="building[0] !== 'CM'">
+            <Active label="Building">
+              <div :class="$style.selectInputBuildingOption">
+                <span :class="$style.selectInputBuilding">{{ building[0] }}: </span>
+                <SelectInput
+                  :class="$style.selectInputBuilding"
+                  v-model="building[1]"
+                  :options="allBuildingCategories[building[0]]" />
+              </div>
+            </Active>
+            <Active label="Amount" tooltip="Amount of the selected building">
+              <NumberInput v-model="building[2]" />
+            </Active>
+          </template>
         </template>
+        <Active label="Building Category">
+          <SelectInput v-model="buildingCategory" :options="Object.keys(allBuildingCategories)" />
+        </Active>
         <Commands>
           <PrunButton v-if="type === 'Building'" primary @click="addBuilding">ADD</PrunButton>
-          <PrunButton v-if="type === 'Building' && buildingAddAmt > 1" primary @click="remBuilding"
+          <PrunButton v-if="type === 'Building' && buildingAddAmt > 0" primary @click="remBuilding"
             >REMOVE</PrunButton
           >
         </Commands>
@@ -343,9 +412,26 @@ function remBuilding() {
 
 <style module>
 .buildingPlanetMaterials {
-  display: flex;
+  width: 158px;
+  display: inline-flex;
   justify-content: flex-end;
   align-items: center;
   height: 100%;
+}
+
+.validPlanet {
+  background-color: rgba(92, 184, 92, 0.175);
+}
+
+.invalidPlanet {
+  background-color: rgba(217, 83, 79, 0.3);
+}
+
+.selectInputBuildingOption {
+  display: flex;
+}
+
+.selectInputBuilding {
+  width: 79px;
 }
 </style>
