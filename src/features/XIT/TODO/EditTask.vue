@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import { planetsStore } from '@src/infrastructure/prun-api/data/planets';
-import PrunButton from '@src/components/PrunButton.vue';
 import SectionHeader from '@src/components/SectionHeader.vue';
 import Active from '@src/components/forms/Active.vue';
-import Commands from '@src/components/forms/Commands.vue';
-import DateInput from '@src/components/forms/DateInput.vue';
-import NumberInput from '@src/components/forms/NumberInput.vue';
-import SelectInput from '@src/components/forms/SelectInput.vue';
 import TextInput from '@src/components/forms/TextInput.vue';
-import { isRepairableBuilding } from '@src/core/buildings';
-import { getPlanetBurn } from '@src/core/burn';
-import { mergeMaterialAmounts, sortMaterialAmounts } from '@src/core/sort-materials';
+import SelectInput from '@src/components/forms/SelectInput.vue';
+import NumberInput from '@src/components/forms/NumberInput.vue';
+import Commands from '@src/components/forms/Commands.vue';
+import PrunButton from '@src/components/PrunButton.vue';
+import DateInput from '@src/components/forms/DateInput.vue';
+import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
 import {
   getEntityNameFromAddress,
   getEntityNaturalIdFromAddress,
 } from '@src/infrastructure/prun-api/data/addresses';
-import { getBuildingLastRepair, sitesStore } from '@src/infrastructure/prun-api/data/sites';
+import { getPlanetBurn } from '@src/core/burn';
 import { createId } from '@src/store/create-id';
 import { fixed0 } from '@src/utils/format';
+import { isRepairableBuilding } from '@src/core/buildings';
+import { mergeMaterialAmounts, sortMaterialAmounts } from '@src/core/sort-materials';
 import { materialsStore } from '@src/infrastructure/prun-api/data/materials';
-import RadioItem from '@src/components/forms/RadioItem.vue';
+import { planetsStore } from '@src/infrastructure/prun-api/data/planets';
 
 const { onDelete, onSave, task } = defineProps<{
   onDelete?: () => void;
@@ -57,8 +56,8 @@ const planets = computed(() => {
   }
 
   return (sitesStore.all.value ?? []).map(x => ({
-    label: getEntityNameFromAddress(x.address) || '',
-    value: getEntityNaturalIdFromAddress(x.address) || '',
+    label: getEntityNameFromAddress(x.address) ?? '',
+    value: getEntityNaturalIdFromAddress(x.address) ?? '',
   }));
 });
 
@@ -122,20 +121,15 @@ watchEffect(async () => {
   if (planetsStore.find(buildingPlanet.value)) {
     await fetch(`https://rest.fnar.net/planet/${buildingPlanet.value}`)
       .then(response => response.json())
-      .then(planet => {
-        getPlanetEnvironmentMaterials(planet);
+      .then((planet: FioApi.Planet) => {
+        buildingEnvironmentMaterials.value = getPlanetEnvironmentMaterials(planet);
       });
   } else {
     buildingEnvironmentMaterials.value = [];
   }
 });
 
-function getPlanetEnvironmentMaterials(planet: {
-  Gravity: number;
-  Pressure: number;
-  Temperature: number;
-  Surface: boolean;
-}) {
+function getPlanetEnvironmentMaterials(planet: FioApi.Planet) {
   const materials: string[] = [];
   if (planet.Surface) {
     materials.push('MCG');
@@ -157,7 +151,7 @@ function getPlanetEnvironmentMaterials(planet: {
   } else if (planet.Temperature > 75) {
     materials.push('TSH');
   }
-  buildingEnvironmentMaterials.value = materials;
+  return materials;
 }
 
 async function onSaveClick() {
@@ -320,19 +314,21 @@ async function onSaveClick() {
       for (const material of buildingEnvironmentMaterials.value) {
         environmentMaterialsText += `, [[m:${material}]]`;
       }
-      environmentMaterialsText = 'Environment Materials: ' + environmentMaterialsText.substring(2);
+      environmentMaterialsText = 'Environment: ' + environmentMaterialsText.substring(2);
     }
 
-    task.text = `Construct base [[p:${buildingPlanet.value.toUpperCase()}]]. 
-      Area: ${totalArea}. ${environmentMaterialsText}`;
+    task.text = `Construct base [[p:${buildingPlanet.value.toUpperCase()}]]. ${environmentMaterialsText}`;
+
+    const pluralBuilding = totalBuildings === 1 ? 'building' : 'buildings';
 
     task.subtasks = [];
     task.subtasks.push({
       id: createId(),
       type: 'Text',
-      text: `${totalBuildings} buildings:`,
+      text: `${totalBuildings} ${pluralBuilding} using ${totalArea} area:`,
       subtasks: [],
     });
+
     for (const building of resolvedBuildings) {
       task.subtasks[0].subtasks!.push({
         id: createId(),
@@ -340,12 +336,14 @@ async function onSaveClick() {
         text: `${building.amount} [[b:${building.buildingInfo.Ticker}]]`,
       });
     }
+
     task.subtasks.push({
       id: createId(),
       type: 'Text',
       text: `Materials:`,
       subtasks: [],
     });
+
     for (const material of materials) {
       task.subtasks[1].subtasks!.push({
         id: createId(),
@@ -376,6 +374,7 @@ function remBuilding() {
   buildingAddAmt.value--;
   buildings.value.pop();
 }
+
 const $style = useCssModule();
 
 const validPlanet = computed(() => {
