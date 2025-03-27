@@ -32,7 +32,7 @@ function onTileReady(tile: PrunTile) {
         <th>
           Expert Eta
           <Tooltip
-            class={$style.thExpertTooltip}
+            class={$style.tooltip}
             position="left"
             tooltip="ETA will be exact if you will get a new expert with your current orders, and approximate if your current orders are not enough."
           />
