@@ -40,11 +40,21 @@ function onCheckmarkClick() {
   if (task.recurring && task.dueDate) {
     task.dueDate = task.dueDate + dayjs.duration(task.recurring, 'days').asMilliseconds();
     for (const subtask of task.subtasks ?? []) {
+      if (subtask.subtasks) {
+        for (const subtask2 of subtask.subtasks ?? []) {
+          subtask2.completed = false;
+        }
+      }
       subtask.completed = false;
     }
   } else {
     task.completed = !task.completed;
     for (const subtask of task.subtasks ?? []) {
+      if (subtask.subtasks) {
+        for (const subtask2 of subtask.subtasks ?? []) {
+          subtask2.completed = task.completed;
+        }
+      }
       subtask.completed = task.completed;
     }
   }

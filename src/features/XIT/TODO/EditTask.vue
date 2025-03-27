@@ -19,6 +19,7 @@ import { isRepairableBuilding } from '@src/core/buildings';
 import { mergeMaterialAmounts, sortMaterialAmounts } from '@src/core/sort-materials';
 import { materialsStore } from '@src/infrastructure/prun-api/data/materials';
 import { planetsStore } from '@src/infrastructure/prun-api/data/planets';
+import RadioItem from '@src/components/forms/RadioItem.vue';
 
 const { onDelete, onSave, task } = defineProps<{
   onDelete?: () => void;
@@ -317,7 +318,9 @@ async function onSaveClick() {
       environmentMaterialsText = 'Environment: ' + environmentMaterialsText.substring(2);
     }
 
-    task.text = `Construct base [[p:${buildingPlanet.value.toUpperCase()}]]. ${environmentMaterialsText}`;
+    const planetName = planetsStore.find(buildingPlanet.value)?.naturalId;
+    console.log(planetName);
+    task.text = `Construct base [[p:${planetName}]]. ${environmentMaterialsText}`;
 
     const pluralBuilding = totalBuildings === 1 ? 'building' : 'buildings';
 
@@ -437,18 +440,18 @@ const validPlanet = computed(() => {
             buildingEnvironmentMaterials
           }}</div>
         </Commands>
-        <template v-for="building in buildings">
+        <template v-for="(building, index) in buildings">
           <template v-if="building[0] !== 'CM'">
-            <Active label="Building">
+            <Active :key="index" label="Building">
               <div :class="$style.selectInputBuildingOption">
                 <span :class="$style.selectInputBuilding">{{ building[0] }}: </span>
                 <SelectInput
-                  :class="$style.selectInputBuilding"
                   v-model="building[1]"
+                  :class="$style.selectInputBuilding"
                   :options="allBuildingCategories[building[0]]" />
               </div>
             </Active>
-            <Active label="Amount" tooltip="Amount of the selected building">
+            <Active :key="index" label="Amount" tooltip="Amount of the selected building">
               <NumberInput v-model="building[2]" />
             </Active>
           </template>
