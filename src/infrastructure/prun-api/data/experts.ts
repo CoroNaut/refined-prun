@@ -8,7 +8,7 @@ const state = store.state;
 
 onApiMessage({
   EXPERTS_EXPERTS(data: PrunApi.Experts) {
-    data['id'] = createId();
+    data.id = createId();
     store.setOne(data);
     store.setFetched();
   },
