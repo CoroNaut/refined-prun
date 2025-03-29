@@ -6,26 +6,9 @@ declare namespace FioApi {
 
   export declare type AllPlanetsShort = PlanetShort[];
 
-  export interface Commodity {
-    CommodityName: string;
-    CommodityTicker: string;
-    Weight: number;
-    Volume: number;
-    Amount: number;
-  }
-
   export interface Building {
     BuildingCosts: Commodity[];
-    Recipes: [
-      {
-        Inputs: Commodity[];
-        Outputs: Commodity[];
-        BuildingRecipeId: string;
-        DurationMs: number;
-        RecipeName: string;
-        StandardRecipeName: string;
-      },
-    ];
+    Recipes: BuildingRecipe[];
     BuildingId: string;
     Name: string;
     Ticker: string;
@@ -40,13 +23,30 @@ declare namespace FioApi {
     Timestamp: string;
   }
 
-  export interface Planet {
+  interface BuildingRecipe {
+    Inputs: Commodity[];
+    Outputs: Commodity[];
+    BuildingRecipeId: string;
+    DurationMs: number;
+    RecipeName: string;
+    StandardRecipeName: string;
+  }
+
+  interface Commodity {
+    CommodityName: string;
+    CommodityTicker: string;
+    Weight: number;
+    Volume: number;
+    Amount: number;
+  }
+
+  interface Planet {
     Resources: PlanetResource[];
     BuildRequirements: PlanetBuildRequirement[];
     PlanetProductionFees: PlanetProductionFee[];
     PlanetCOGCPrograms: PlanetCOGCProgram[];
     COGCVotes: COGCVote[];
-    COGCUpkeep: Object[];
+    COGCUpkeep: object[];
     PlanetId: string;
     PlanetNaturalId: string;
     PlanetName: string;
@@ -98,7 +98,7 @@ declare namespace FioApi {
     Factor: number;
   }
 
-  export interface PlanetBuildRequirement {
+  interface PlanetBuildRequirement {
     MaterialName: string;
     MaterialId: string;
     MaterialTicker: string;
@@ -120,7 +120,7 @@ declare namespace FioApi {
   type ProductionWorkforceLevel = 'PIONEER' | 'SETTLER' | 'TECHNICIAN' | 'ENGINEER' | 'SCIENTIST';
   type ProductionFeeCurrency = 'AIC' | 'CIS' | 'ECD' | 'ICA' | 'NCC';
 
-  export interface PlanetProductionFee {
+  interface PlanetProductionFee {
     Category: ProductionFeeCategory;
     WorkforceLevel: ProductionWorkforceLevel;
     FeeAmount: number;
@@ -129,27 +129,27 @@ declare namespace FioApi {
 
   type ProgramType =
     | 'ADVERTISING_AGRICULTURE'
-    | 'ADVERTISING_PIONEERS		'
-    | 'ADVERTISING_SETTLERS		'
-    | 'ADVERTISING_TECHNICIANS		'
-    | 'ADVERTISING_ENGINEERS		'
-    | 'ADVERTISING_SCIENTISTS		'
-    | 'ADVERTISING_CHEMISTRY		'
-    | 'ADVERTISING_CONSTRUCTION		'
-    | 'ADVERTISING_ELECTRONICS		'
-    | 'ADVERTISING_FOOD_INDUSTRIES		'
-    | 'ADVERTISING_FUEL_REFINING		'
-    | 'ADVERTISING_MANUFACTURING		'
-    | 'ADVERTISING_METALLURGY		'
+    | 'ADVERTISING_PIONEERS'
+    | 'ADVERTISING_SETTLERS'
+    | 'ADVERTISING_TECHNICIANS'
+    | 'ADVERTISING_ENGINEERS'
+    | 'ADVERTISING_SCIENTISTS'
+    | 'ADVERTISING_CHEMISTRY'
+    | 'ADVERTISING_CONSTRUCTION'
+    | 'ADVERTISING_ELECTRONICS'
+    | 'ADVERTISING_FOOD_INDUSTRIES'
+    | 'ADVERTISING_FUEL_REFINING'
+    | 'ADVERTISING_MANUFACTURING'
+    | 'ADVERTISING_METALLURGY'
     | 'ADVERTISING_RESOURCE_EXTRACTION';
 
-  export interface PlanetCOGCProgram {
+  interface PlanetCOGCProgram {
     ProgramType: ProgramType;
     StartEpochMs: number;
     EndEpochMs: number;
   }
 
-  export interface COGCVote {
+  interface COGCVote {
     CompanyName: string;
     CompanyCode: string;
     Influence: number;

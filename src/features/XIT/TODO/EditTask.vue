@@ -271,8 +271,6 @@ async function onSaveClick() {
     const resolvedBuildings = await Promise.all(promises);
 
     for (const building of resolvedBuildings) {
-      console.log(building);
-
       totalArea += building.buildingInfo.AreaCost * building.amount;
       totalBuildings += building.amount;
       materialAEF += Math.ceil(building.buildingInfo.AreaCost / 3) * building.amount;
@@ -319,7 +317,6 @@ async function onSaveClick() {
     }
 
     const planetName = planetsStore.find(buildingPlanet.value)?.naturalId;
-    console.log(planetName);
     task.text = `Construct base [[p:${planetName}]]. ${environmentMaterialsText}`;
 
     const pluralBuilding = totalBuildings === 1 ? 'building' : 'buildings';

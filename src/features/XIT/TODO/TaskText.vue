@@ -22,7 +22,6 @@ const parts = computed(() => {
     if (before.length > 0) {
       parts.push({ text: before });
     }
-    console.log(match);
     switch (match[1]) {
       case 'm':
         parts.push({ text: match[2], command: `MAT ${match[2]}` });
